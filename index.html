@@ -1,0 +1,1445 @@
+<!DOCTYPE html>
+<html lang="pl" class="dark h-full">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
+    <title>LockIn Habit Tracker</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://unpkg.com/@phosphor-icons/web"></script>
+    <script>
+        tailwind.config = {
+            darkMode: 'class',
+            theme: {
+                extend: {
+                    colors: {
+                        brand: {
+                            500: '#10b981', 600: '#059669', glow: '#00ff9d',
+                            dark: '#05070c', card: '#111827', border: '#1f2937',
+                            danger: '#ef4444', warning: '#f59e0b'
+                        }
+                    },
+                    boxShadow: {
+                        'neon': '0 0 15px rgba(16, 185, 129, 0.35)',
+                        'neon-danger': '0 0 15px rgba(239, 68, 68, 0.35)',
+                        'neon-strong': '0 0 25px rgba(0, 255, 157, 0.5)',
+                    }
+                }
+            }
+        }
+    </script>
+    <style>
+        * { -webkit-tap-highlight-color: transparent; user-select: none; box-sizing: border-box; }
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+            background-color: #05070c; color: #f3f4f6;
+            touch-action: manipulation; overflow: hidden;
+        }
+        ::-webkit-scrollbar { width: 4px; height: 4px; }
+        ::-webkit-scrollbar-track { background: rgba(15, 23, 42, 0.4); }
+        ::-webkit-scrollbar-thumb { background: #1f2937; border-radius: 4px; }
+        .pb-safe { padding-bottom: max(1.25rem, env(safe-area-inset-bottom)); }
+        .pt-safe { padding-top: max(0.75rem, env(safe-area-inset-top)); }
+        .glass {
+            background: rgba(17, 24, 39, 0.85);
+            backdrop-filter: blur(16px); -webkit-backdrop-filter: blur(16px);
+            border: 1px solid rgba(255, 255, 255, 0.08);
+        }
+        .glass-card {
+            background: rgba(22, 30, 46, 0.7);
+            backdrop-filter: blur(10px);
+            border: 1px solid rgba(255, 255, 255, 0.06);
+            transition: transform 0.2s ease, border-color 0.25s ease, background-color 0.25s ease;
+        }
+        .glass-card:active { transform: scale(0.985); }
+        .fade-in-up { animation: fadeInUp 0.25s cubic-bezier(0.16, 1, 0.3, 1) forwards; }
+        @keyframes fadeInUp {
+            from { opacity: 0; transform: translateY(8px) scale(0.98); }
+            to { opacity: 1; transform: translateY(0) scale(1); }
+        }
+        .slide-up-modal { animation: slideUpModal 0.3s cubic-bezier(0.16, 1, 0.3, 1) forwards; }
+        @keyframes slideUpModal {
+            from { transform: translateY(100%); }
+            to { transform: translateY(0); }
+        }
+        .check-bounce { transition: transform 0.2s cubic-bezier(0.34, 1.56, 0.64, 1); }
+        .check-bounce:active { transform: scale(0.82); }
+        .shake { animation: shake 0.4s ease; }
+        @keyframes shake {
+            0%,100% { transform: translateX(0); }
+            25% { transform: translateX(-4px); }
+            75% { transform: translateX(4px); }
+        }
+    </style>
+</head>
+<body class="h-full flex flex-col justify-between overflow-hidden text-sm select-none antialiased">
+
+    <div id="app-container" class="relative w-full h-full max-w-md mx-auto flex flex-col bg-[#05070c] overflow-hidden border-x border-slate-800/40">
+        
+        <!-- Header -->
+        <header class="pt-safe px-5 pb-3 flex items-center justify-between glass z-20 border-b border-slate-800/60 shrink-0">
+            <div>
+                <h1 class="text-xl font-black tracking-wider bg-gradient-to-r from-emerald-400 via-teal-300 to-cyan-400 bg-clip-text text-transparent flex items-center gap-2">
+                    LOCKIN <span class="text-[10px] px-1.5 py-0.5 rounded bg-emerald-500/10 text-emerald-400 border border-emerald-500/30 font-bold uppercase tracking-widest">MINI</span>
+                </h1>
+                <p id="header-subtitle" class="text-xs text-slate-400 font-medium mt-0.5">Dzisiaj</p>
+            </div>
+            <div class="flex items-center gap-2">
+                <button onclick="openModal('calendar-modal')" title="Otwórz Kalendarz" class="w-9 h-9 rounded-full bg-slate-900 border border-slate-700 text-emerald-400 flex items-center justify-center font-bold text-base active:scale-95 transition-transform shadow-neon">
+                    <i class="ph-bold ph-calendar"></i>
+                </button>
+                <button onclick="openModal('add-schedule-modal')" title="Dodaj blok czasowy" class="w-9 h-9 rounded-full bg-slate-900 border border-slate-700 text-cyan-400 flex items-center justify-center font-bold text-base active:scale-95 transition-transform">
+                    <i class="ph-bold ph-clock-afternoon"></i>
+                </button>
+                <button onclick="openModal('add-habit-modal')" title="Dodaj nawyk/cel" class="w-9 h-9 rounded-full bg-gradient-to-br from-emerald-400 to-emerald-600 text-slate-950 flex items-center justify-center font-bold text-lg shadow-neon active:scale-95 transition-transform">
+                    <i class="ph-bold ph-plus"></i>
+                </button>
+            </div>
+        </header>
+
+        <!-- Main Content Area -->
+        <main id="main-content" class="flex-1 overflow-y-auto px-4 py-4 space-y-4 pb-28">
+            <!-- Dynamic Tab Render -->
+        </main>
+
+        <!-- Bottom Navigation Bar -->
+        <nav class="fixed bottom-0 left-0 right-0 max-w-md mx-auto glass border-t border-slate-800/80 z-30 pb-safe px-1 pt-2">
+            <div class="grid grid-cols-5 gap-0.5 items-center">
+                <button onclick="switchTab('planner')" id="nav-planner" class="nav-btn flex flex-col items-center justify-center py-1 text-slate-400 transition-colors">
+                    <i class="ph-bold ph-calendar-blank text-xl mb-0.5"></i>
+                    <span class="text-[9px] font-semibold tracking-tight">Plan Dnia</span>
+                </button>
+                <button onclick="switchTab('habits')" id="nav-habits" class="nav-btn flex flex-col items-center justify-center py-1 text-emerald-400 transition-colors">
+                    <i class="ph-fill ph-check-circle text-xl mb-0.5"></i>
+                    <span class="text-[9px] font-semibold tracking-tight">Nawyki</span>
+                </button>
+                <button onclick="switchTab('goals')" id="nav-goals" class="nav-btn flex flex-col items-center justify-center py-1 text-slate-400 transition-colors">
+                    <i class="ph-bold ph-target text-xl mb-0.5"></i>
+                    <span class="text-[9px] font-semibold tracking-tight">Cele</span>
+                </button>
+                <button onclick="switchTab('sleep')" id="nav-sleep" class="nav-btn flex flex-col items-center justify-center py-1 text-slate-400 transition-colors">
+                    <i class="ph-bold ph-moon-stars text-xl mb-0.5"></i>
+                    <span class="text-[9px] font-semibold tracking-tight">Sen</span>
+                </button>
+                <button onclick="switchTab('stats')" id="nav-stats" class="nav-btn flex flex-col items-center justify-center py-1 text-slate-400 transition-colors">
+                    <i class="ph-bold ph-chart-bar text-xl mb-0.5"></i>
+                    <span class="text-[9px] font-semibold tracking-tight">Staty</span>
+                </button>
+            </div>
+        </nav>
+    </div>
+
+    <!-- MODAL 1: Add Habit or Goal -->
+    <div id="add-habit-modal" class="fixed inset-0 bg-black/80 backdrop-blur-md z-50 hidden items-end sm:items-center justify-center p-0 sm:p-4 transition-opacity">
+        <div class="w-full max-w-md glass border-t sm:border border-slate-700/60 rounded-t-3xl sm:rounded-2xl p-5 space-y-4 slide-up-modal">
+            <div class="flex justify-between items-center pb-2 border-b border-slate-800">
+                <h3 class="text-base font-bold text-slate-100 flex items-center gap-2">
+                    <i class="ph-bold ph-plus-circle text-emerald-400"></i> Nowy Nawyk lub Cel
+                </h3>
+                <button onclick="closeModal('add-habit-modal')" class="text-slate-400 hover:text-slate-100">
+                    <i class="ph-bold ph-x text-xl"></i>
+                </button>
+            </div>
+            
+            <form id="add-item-form" onsubmit="handleFormSubmit(event)" class="space-y-3">
+                <div>
+                    <label class="block text-xs text-slate-400 mb-1">Typ Elementu</label>
+                    <div class="grid grid-cols-2 gap-2">
+                        <button type="button" id="type-btn-habit" onclick="setFormType('habit')" class="py-2 px-3 rounded-xl border border-emerald-500/40 bg-emerald-500/10 text-emerald-400 font-semibold text-xs text-center">Nawyk</button>
+                        <button type="button" id="type-btn-goal" onclick="setFormType('goal')" class="py-2 px-3 rounded-xl border border-slate-800 bg-slate-900/60 text-slate-400 font-semibold text-xs text-center">Cel złożony</button>
+                    </div>
+                </div>
+
+                <div>
+                    <label class="block text-xs text-slate-400 mb-1">Nazwa</label>
+                    <input type="text" id="input-title" required placeholder="np. Trening, Czytanie książki" class="w-full bg-slate-900/90 border border-slate-800 rounded-xl px-3 py-2.5 text-slate-100 focus:outline-none focus:border-emerald-500 text-sm transition-colors">
+                </div>
+
+                <div id="habit-frequency-group">
+                    <label class="block text-xs text-slate-400 mb-1">Częstotliwość Nawyków</label>
+                    <select id="input-freq" class="w-full bg-slate-900/90 border border-slate-800 rounded-xl px-3 py-2.5 text-slate-100 focus:outline-none focus:border-emerald-500 text-sm">
+                        <option value="daily">Dzienna (Daily)</option>
+                        <option value="weekly">Tygodniowa (Weekly)</option>
+                        <option value="monthly">Miesięczna (Monthly)</option>
+                        <option value="yearly">Roczna (Yearly)</option>
+                    </select>
+                </div>
+
+                <div id="goal-subitems-group" class="hidden space-y-2">
+                    <label class="block text-xs text-slate-400">Podgrupy / Mini-cele (opcjonalne)</label>
+                    <div id="subgoals-inputs" class="space-y-2 max-h-32 overflow-y-auto pr-1">
+                        <input type="text" placeholder="Mini-cel 1" class="subgoal-input w-full bg-slate-900/90 border border-slate-800 rounded-lg px-3 py-1.5 text-xs text-slate-200">
+                    </div>
+                    <div class="flex items-center gap-3 pt-1">
+                        <button type="button" onclick="addSubGoalInput()" class="text-xs text-emerald-400 flex items-center gap-1 font-medium">
+                            <i class="ph-bold ph-plus"></i> Dodaj mini-cel
+                        </button>
+                        <button type="button" onclick="removeSubGoalInput()" class="text-xs text-red-400 flex items-center gap-1 font-medium">
+                            <i class="ph-bold ph-minus"></i> Usuń ostatni
+                        </button>
+                    </div>
+                    <p class="text-[10px] text-slate-500">Możesz zostawić puste — cel będzie można ukończyć jednym kliknięciem.</p>
+                </div>
+
+                <div class="pt-2">
+                    <button type="submit" class="w-full py-3 bg-gradient-to-r from-emerald-500 to-teal-500 hover:from-emerald-400 hover:to-teal-400 text-slate-950 font-bold rounded-xl shadow-neon transition-all">
+                        Zapisz
+                    </button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <!-- MODAL 2: Add Schedule Block -->
+    <div id="add-schedule-modal" class="fixed inset-0 bg-black/80 backdrop-blur-md z-50 hidden items-end sm:items-center justify-center p-0 sm:p-4 transition-opacity">
+        <div class="w-full max-w-md glass border-t sm:border border-slate-700/60 rounded-t-3xl sm:rounded-2xl p-5 space-y-4 slide-up-modal max-h-[90vh] overflow-y-auto">
+            <div class="flex justify-between items-center pb-2 border-b border-slate-800">
+                <h3 class="text-base font-bold text-slate-100 flex items-center gap-2">
+                    <i class="ph-bold ph-clock text-cyan-400"></i> Blok w Planie Dnia
+                </h3>
+                <button onclick="closeModal('add-schedule-modal')" class="text-slate-400 hover:text-slate-100">
+                    <i class="ph-bold ph-x text-xl"></i>
+                </button>
+            </div>
+            
+            <form id="add-schedule-form" onsubmit="handleScheduleSubmit(event)" class="space-y-3">
+                <div>
+                    <label class="block text-xs text-slate-400 mb-1">Tytuł Zdarzenia</label>
+                    <input type="text" id="sched-title" required placeholder="np. Nauka, Praca, Trening" class="w-full bg-slate-900/90 border border-slate-800 rounded-xl px-3 py-2 text-slate-100 focus:outline-none focus:border-cyan-500 text-sm transition-colors">
+                </div>
+
+                <div class="grid grid-cols-2 gap-2">
+                    <div>
+                        <label class="block text-xs text-slate-400 mb-1">Od godziny</label>
+                        <input type="time" id="sched-start" required value="16:00" class="w-full bg-slate-900/90 border border-slate-800 rounded-xl px-3 py-2 text-slate-100 text-sm focus:outline-none focus:border-cyan-500">
+                    </div>
+                    <div>
+                        <label class="block text-xs text-slate-400 mb-1">Do godziny</label>
+                        <input type="time" id="sched-end" required value="18:00" class="w-full bg-slate-900/90 border border-slate-800 rounded-xl px-3 py-2 text-slate-100 text-sm focus:outline-none focus:border-cyan-500">
+                    </div>
+                </div>
+
+                <div>
+                    <label class="block text-xs text-slate-400 mb-1">Dni Powtarzania</label>
+                    <div class="grid grid-cols-7 gap-1" id="days-selector">
+                        <button type="button" data-day="1" onclick="toggleDaySelection(this)" class="day-btn py-1.5 rounded-lg border border-slate-800 bg-slate-900 text-slate-400 text-xs font-bold">Pn</button>
+                        <button type="button" data-day="2" onclick="toggleDaySelection(this)" class="day-btn py-1.5 rounded-lg border border-slate-800 bg-slate-900 text-slate-400 text-xs font-bold">Wt</button>
+                        <button type="button" data-day="3" onclick="toggleDaySelection(this)" class="day-btn py-1.5 rounded-lg border border-slate-800 bg-slate-900 text-slate-400 text-xs font-bold">Śr</button>
+                        <button type="button" data-day="4" onclick="toggleDaySelection(this)" class="day-btn py-1.5 rounded-lg border border-slate-800 bg-slate-900 text-slate-400 text-xs font-bold">Cz</button>
+                        <button type="button" data-day="5" onclick="toggleDaySelection(this)" class="day-btn py-1.5 rounded-lg border border-slate-800 bg-slate-900 text-slate-400 text-xs font-bold">Pt</button>
+                        <button type="button" data-day="6" onclick="toggleDaySelection(this)" class="day-btn py-1.5 rounded-lg border border-slate-800 bg-slate-900 text-slate-400 text-xs font-bold">Sob</button>
+                        <button type="button" data-day="0" onclick="toggleDaySelection(this)" class="day-btn py-1.5 rounded-lg border border-slate-800 bg-slate-900 text-slate-400 text-xs font-bold">Nd</button>
+                    </div>
+                    <p class="text-[10px] text-slate-500 mt-1">Zaznacz dni tygodnia lub pozostaw odznaczone dla dzisiejszego pojedynczego dnia.</p>
+                </div>
+
+                <div>
+                    <label class="block text-xs text-slate-400 mb-1">Przypisz Nawyk (opcjonalnie)</label>
+                    <select id="sched-habit-link" class="w-full bg-slate-900/90 border border-slate-800 rounded-xl px-3 py-2 text-slate-100 focus:outline-none focus:border-cyan-500 text-sm">
+                        <option value="">-- Brak połączenia z nawykiem --</option>
+                    </select>
+                </div>
+
+                <div class="pt-2">
+                    <button type="submit" class="w-full py-3 bg-gradient-to-r from-cyan-500 to-blue-500 hover:from-cyan-400 hover:to-blue-400 text-slate-950 font-bold rounded-xl shadow-lg transition-all">
+                        Zapisz Blok Czasowy
+                    </button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <!-- MODAL 3: Calendar Modal -->
+    <div id="calendar-modal" class="fixed inset-0 bg-black/80 backdrop-blur-md z-50 hidden items-center justify-center p-4 transition-opacity">
+        <div class="w-full max-w-md glass border border-slate-700/60 rounded-2xl p-5 space-y-4 fade-in-up">
+            <div class="flex justify-between items-center pb-2 border-b border-slate-800">
+                <h3 class="text-base font-bold text-slate-100 flex items-center gap-2">
+                    <i class="ph-bold ph-calendar text-emerald-400"></i> Kalendarz Planisty
+                </h3>
+                <button onclick="closeModal('calendar-modal')" class="text-slate-400 hover:text-slate-100">
+                    <i class="ph-bold ph-x text-xl"></i>
+                </button>
+            </div>
+
+            <div id="calendar-view-container" class="space-y-3">
+                <!-- Rendered Calendar -->
+            </div>
+        </div>
+    </div>
+
+    <script>
+        const STORAGE_KEY = 'LOCKIN_HABITS_STABLE_V3';
+
+        const FREQ_LABELS = { daily: 'dzienny', weekly: 'tygodniowy', monthly: 'miesięczny', yearly: 'roczny' };
+        const STREAK_UNITS = { daily: 'dni z rzędu', weekly: 'tyg. z rzędu', monthly: 'mies. z rzędu', yearly: 'lat z rzędu' };
+
+        let selectedDaysForSchedule = [];
+        let viewDateStr = getTodayStr();
+        let currentCalendarDate = new Date();
+        let currentFormType = 'habit';
+
+        let state = {
+            activeTab: 'planner',
+            habitFilter: 'daily',
+            habits: [],
+            goals: [],
+            schedule: [],
+            sleepLogs: {},
+            history: [],
+            logs: {}
+        };
+
+        // ---------- DATA HELPERS ----------
+        function formatDate(d) {
+            return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
+        }
+        function getTodayStr() { return formatDate(new Date()); }
+        function getYesterdayStr() { const d = new Date(); d.setDate(d.getDate() - 1); return formatDate(d); }
+
+        function getWeekKey(date) {
+            const d = new Date(Date.UTC(date.getFullYear(), date.getMonth(), date.getDate()));
+            const dayNum = d.getUTCDay() || 7;
+            d.setUTCDate(d.getUTCDate() + 4 - dayNum);
+            const yearStart = new Date(Date.UTC(d.getUTCFullYear(), 0, 1));
+            const weekNo = Math.ceil((((d - yearStart) / 86400000) + 1) / 7);
+            return `${d.getUTCFullYear()}-W${String(weekNo).padStart(2, '0')}`;
+        }
+
+        // Klucz logu dla danego nawyku i dnia
+        function getLogKey(habit, dateStr) {
+            const d = new Date(dateStr + 'T00:00:00');
+            const freq = habit.freq || 'daily';
+            if (freq === 'daily') return dateStr;
+            if (freq === 'weekly') return getWeekKey(d);
+            if (freq === 'monthly') return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}`;
+            if (freq === 'yearly') return `${d.getFullYear()}`;
+            return dateStr;
+        }
+
+        function isHabitDone(habit, dateStr) {
+            const key = getLogKey(habit, dateStr);
+            return (state.logs[key] || []).includes(habit.id);
+        }
+
+        function toggleHabitLog(habit, dateStr) {
+            const key = getLogKey(habit, dateStr);
+            if (!state.logs[key]) state.logs[key] = [];
+            const idx = state.logs[key].indexOf(habit.id);
+            if (idx > -1) {
+                state.logs[key].splice(idx, 1);
+            } else {
+                state.logs[key].push(habit.id);
+            }
+        }
+
+        // Streak: ile kolejnych dni/tygodni/miesięcy/lat pod rząd, licząc od dziś (lub ostatniego zalogowanego okresu).
+        function calculateStreak(habit) {
+            const freq = habit.freq || 'daily';
+            let streak = 0;
+            let d = new Date();
+            const todayStr = formatDate(d);
+
+            if (!isHabitDone(habit, todayStr)) {
+                // zacznij od poprzedniego okresu
+                if (freq === 'daily') d.setDate(d.getDate() - 1);
+                else if (freq === 'weekly') d.setDate(d.getDate() - 7);
+                else if (freq === 'monthly') d.setMonth(d.getMonth() - 1);
+                else if (freq === 'yearly') d.setFullYear(d.getFullYear() - 1);
+            }
+
+            const seenKeys = new Set();
+            while (true) {
+                const key = getLogKey(habit, formatDate(d));
+                if (seenKeys.has(key)) break; // zabezpieczenie przed pętlą
+                seenKeys.add(key);
+
+                if (isHabitDone(habit, formatDate(d))) {
+                    streak++;
+                    if (freq === 'daily') d.setDate(d.getDate() - 1);
+                    else if (freq === 'weekly') d.setDate(d.getDate() - 7);
+                    else if (freq === 'monthly') d.setMonth(d.getMonth() - 1);
+                    else if (freq === 'yearly') d.setFullYear(d.getFullYear() - 1);
+                } else {
+                    break;
+                }
+            }
+            return streak;
+        }
+
+        // ---------- MIGRACJA DANYCH ----------
+        function migrateData() {
+            // 1. Usuń stare pole streak (teraz liczone z logów)
+            (state.habits || []).forEach(h => { delete h.streak; });
+
+            // 2. Uzupełnij brakujące pola
+            if (!state.habits) state.habits = [];
+            if (!state.goals) state.goals = [];
+            if (!state.schedule) state.schedule = [];
+            if (!state.sleepLogs) state.sleepLogs = {};
+            if (!state.history) state.history = [];
+            if (!state.logs) state.logs = {};
+
+            // 3. Historia celów — uzupełnij subgoals
+            state.history.forEach(item => {
+                if (!item.subgoals) item.subgoals = [];
+            });
+
+            // 4. Migracja logów dla nawyków niedziennych: przenieś stare dzienne wpisy do kluczy okresowych
+            state.habits.filter(h => (h.freq || 'daily') !== 'daily').forEach(h => {
+                Object.keys(state.logs).forEach(dateKey => {
+                    if (!/^\d{4}-\d{2}-\d{2}$/.test(dateKey)) return;
+                    if (!state.logs[dateKey].includes(h.id)) return;
+                    const periodKey = getLogKey(h, dateKey);
+                    if (!state.logs[periodKey]) state.logs[periodKey] = [];
+                    if (!state.logs[periodKey].includes(h.id)) state.logs[periodKey].push(h.id);
+                    state.logs[dateKey] = state.logs[dateKey].filter(id => id !== h.id);
+                });
+            });
+
+            // 5. Usuń osierocone ID z logów (po usuniętych nawykach)
+            const validIds = new Set(state.habits.map(h => h.id));
+            Object.keys(state.logs).forEach(key => {
+                state.logs[key] = state.logs[key].filter(id => validIds.has(id));
+                if (state.logs[key].length === 0) delete state.logs[key];
+            });
+        }
+
+        // ---------- INIT ----------
+        window.onload = function() {
+            loadData();
+            updateHeaderDate();
+            populateHabitDropdown();
+            render();
+        };
+
+        function updateHeaderDate() {
+            const dateObj = new Date(viewDateStr + 'T00:00:00');
+            const options = { weekday: 'long', month: 'short', day: 'numeric' };
+            const formatted = dateObj.toLocaleDateString('pl-PL', options);
+            const subtitleEl = document.getElementById('header-subtitle');
+            if (subtitleEl) {
+                const isToday = viewDateStr === getTodayStr();
+                const isYesterday = viewDateStr === getYesterdayStr();
+                let prefix = '';
+                if (isToday) prefix = 'Dzisiaj, ';
+                else if (isYesterday) prefix = 'Wczoraj, ';
+                subtitleEl.innerText = prefix + formatted;
+            }
+        }
+
+        function loadData() {
+            const saved = localStorage.getItem(STORAGE_KEY);
+            if (saved) {
+                try {
+                    state = JSON.parse(saved);
+                } catch (e) {
+                    console.error("Error parsing storage data", e);
+                }
+            }
+            migrateData();
+            saveData();
+        }
+
+        function saveData() {
+            localStorage.setItem(STORAGE_KEY, JSON.stringify(state));
+            populateHabitDropdown();
+        }
+
+        function populateHabitDropdown() {
+            const select = document.getElementById('sched-habit-link');
+            if (!select) return;
+            const currentValue = select.value;
+            select.innerHTML = `<option value="">-- Brak połączenia z nawykiem --</option>` +
+                state.habits.map(h => `<option value="${h.id}">${h.title} (${FREQ_LABELS[h.freq] || h.freq})</option>`).join('');
+            if (currentValue && state.habits.some(h => h.id === currentValue)) {
+                select.value = currentValue;
+            }
+        }
+
+        // ---------- UI HELPERS ----------
+        function getStatusColorClasses(percentage) {
+            if (percentage < 50) {
+                return {
+                    bg: 'bg-red-950/30 border-red-500/30 text-red-400',
+                    badgeBg: 'bg-red-500/20 text-red-400 border-red-500/30',
+                    bar: 'from-red-600 to-rose-500',
+                    tileBg: 'bg-red-950/80 border-red-800 text-red-300',
+                    text: 'text-red-400'
+                };
+            } else if (percentage < 80) {
+                return {
+                    bg: 'bg-amber-950/30 border-amber-500/30 text-amber-400',
+                    badgeBg: 'bg-amber-500/20 text-amber-400 border-amber-500/30',
+                    bar: 'from-amber-600 to-yellow-400',
+                    tileBg: 'bg-amber-700/60 border-amber-500 text-amber-100',
+                    text: 'text-amber-400'
+                };
+            } else {
+                return {
+                    bg: 'bg-emerald-950/30 border-emerald-500/30 text-emerald-400',
+                    badgeBg: 'bg-emerald-500/20 text-emerald-400 border-emerald-500/30',
+                    bar: 'from-emerald-500 to-teal-400',
+                    tileBg: 'bg-emerald-400 border-emerald-300 shadow-neon text-slate-950',
+                    text: 'text-emerald-400'
+                };
+            }
+        }
+
+        function flashInvalid(el) {
+            if (!el) return;
+            el.classList.add('border-red-500', 'shake');
+            setTimeout(() => el.classList.remove('border-red-500', 'shake'), 900);
+            el.focus();
+        }
+
+        // ---------- NAVIGATION ----------
+        function switchTab(tabName) {
+            state.activeTab = tabName;
+            document.querySelectorAll('.nav-btn').forEach(btn => {
+                btn.classList.remove('text-emerald-400');
+                btn.classList.add('text-slate-400');
+            });
+            const activeBtn = document.getElementById(`nav-${tabName}`);
+            if (activeBtn) {
+                activeBtn.classList.remove('text-slate-400');
+                activeBtn.classList.add('text-emerald-400');
+            }
+            render();
+        }
+
+        function setHabitFilter(filter) {
+            state.habitFilter = filter;
+            render();
+        }
+
+        function setViewDate(dateStr) {
+            viewDateStr = dateStr;
+            updateHeaderDate();
+            closeModal('calendar-modal');
+            render();
+        }
+
+        // ---------- HABIT / GOAL / SCHEDULE OPERATIONS ----------
+        function toggleHabit(habitId, targetDateStr = null) {
+            const dateStr = targetDateStr || viewDateStr;
+            const habit = state.habits.find(h => h.id === habitId);
+            if (!habit) return;
+            toggleHabitLog(habit, dateStr);
+            saveData();
+            render();
+        }
+
+        function toggleSubgoal(goalId, subgoalId) {
+            const goal = state.goals.find(g => g.id === goalId);
+            if (!goal) return;
+            const sub = goal.subgoals.find(s => s.id === subgoalId);
+            if (sub) {
+                sub.completed = !sub.completed;
+                saveData();
+                render();
+            }
+        }
+
+        function completeGoal(goalId) {
+            const goalIdx = state.goals.findIndex(g => g.id === goalId);
+            if (goalIdx > -1) {
+                const goal = state.goals[goalIdx];
+                state.history.unshift({
+                    id: goal.id,
+                    title: goal.title,
+                    completedAt: viewDateStr,
+                    subgoals: goal.subgoals || []
+                });
+                state.goals.splice(goalIdx, 1);
+                saveData();
+                render();
+            }
+        }
+
+        function restoreGoal(historyId) {
+            const histIdx = state.history.findIndex(h => h.id === historyId);
+            if (histIdx > -1) {
+                const item = state.history[histIdx];
+                state.goals.push({
+                    id: item.id,
+                    title: item.title,
+                    createdAt: viewDateStr,
+                    subgoals: item.subgoals || []
+                });
+                state.history.splice(histIdx, 1);
+                saveData();
+                render();
+            }
+        }
+
+        function deleteHabit(id) {
+            state.habits = state.habits.filter(h => h.id !== id);
+            Object.keys(state.logs).forEach(k => {
+                state.logs[k] = state.logs[k].filter(hid => hid !== id);
+                if (state.logs[k].length === 0) delete state.logs[k];
+            });
+            // usuń powiązane bloki planu (habitId)
+            state.schedule.forEach(s => { if (s.habitId === id) s.habitId = null; });
+            saveData();
+            render();
+        }
+
+        function deleteGoal(id) {
+            state.goals = state.goals.filter(g => g.id !== id);
+            saveData();
+            render();
+        }
+
+        function deleteScheduleItem(id) {
+            state.schedule = state.schedule.filter(s => s.id !== id);
+            saveData();
+            render();
+        }
+
+        function logSleep(hours, bedTime, wakeTime, targetDateStr = null) {
+            const dateStr = targetDateStr || viewDateStr;
+            const computedHours = hours ? parseFloat(hours) : 8.0;
+            state.sleepLogs[dateStr] = {
+                hours: computedHours,
+                bedTime: bedTime || '23:00',
+                wakeTime: wakeTime || '07:00'
+            };
+            saveData();
+            render();
+        }
+
+        function recalcSleepHours() {
+            const bed = document.getElementById('sleep-bed').value;
+            const wake = document.getElementById('sleep-wake').value;
+            const hoursInput = document.getElementById('sleep-hours');
+            if (bed && wake && hoursInput) {
+                const [bH, bM] = bed.split(':').map(Number);
+                const [wH, wM] = wake.split(':').map(Number);
+                let startM = bH * 60 + bM;
+                let endM = wH * 60 + wM;
+                if (endM <= startM) endM += 1440;
+                hoursInput.value = parseFloat(((endM - startM) / 60).toFixed(1));
+            }
+        }
+
+        // ---------- RENDER ----------
+        function render() {
+            const container = document.getElementById('main-content');
+            if (!container) return;
+            switch (state.activeTab) {
+                case 'planner': container.innerHTML = renderPlannerView(); break;
+                case 'habits': container.innerHTML = renderHabitsView(); break;
+                case 'goals': container.innerHTML = renderGoalsView(); break;
+                case 'sleep':
+                    container.innerHTML = renderSleepView();
+                    setTimeout(renderSleepChart, 60);
+                    break;
+                case 'stats': container.innerHTML = renderStatsView(); break;
+                default: container.innerHTML = renderPlannerView();
+            }
+        }
+
+        function timeToMinutes(t) {
+            const [h, m] = t.split(':').map(Number);
+            return h * 60 + m;
+        }
+        function minutesToTime(m) {
+            const mins = ((m % (24 * 60)) + 24 * 60) % (24 * 60);
+            const h = Math.floor(mins / 60);
+            const min = mins % 60;
+            return `${String(h).padStart(2, '0')}:${String(min).padStart(2, '0')}`;
+        }
+
+        function renderPlannerView() {
+            const currentDateObj = new Date(viewDateStr + 'T00:00:00');
+            const dayOfWeek = currentDateObj.getDay();
+            const sleepData = state.sleepLogs[viewDateStr] || null;
+
+            const filteredSchedule = state.schedule.filter(s => {
+                if (s.specificDate) return s.specificDate === viewDateStr;
+                if (s.days && s.days.length > 0) return s.days.includes(dayOfWeek);
+                return false;
+            });
+
+            let blocks = [];
+
+            if (sleepData) {
+                const bMin = timeToMinutes(sleepData.bedTime || '23:00');
+                const wMin = timeToMinutes(sleepData.wakeTime || '07:00');
+
+                if (bMin < wMin) {
+                    // ta sama doba, np. 02:00–10:00
+                    blocks.push({
+                        id: 'sleep',
+                        title: `Sen (${sleepData.hours}h)`,
+                        start: sleepData.bedTime,
+                        end: sleepData.wakeTime,
+                        startMin: bMin,
+                        endMin: wMin,
+                        isSleep: true
+                    });
+                } else {
+                    // przez północ: poranny fragment + wieczorny fragment
+                    if (wMin > 0) {
+                        blocks.push({
+                            id: 'sleep-morning',
+                            title: `Sen (Pobudka ${sleepData.wakeTime})`,
+                            start: '00:00',
+                            end: sleepData.wakeTime,
+                            startMin: 0,
+                            endMin: wMin,
+                            isSleep: true
+                        });
+                    }
+                    if (bMin < 1440) {
+                        blocks.push({
+                            id: 'sleep-evening',
+                            title: `Sen (${sleepData.hours}h)`,
+                            start: sleepData.bedTime,
+                            end: '24:00',
+                            startMin: bMin,
+                            endMin: 1440,
+                            isSleep: true
+                        });
+                    }
+                }
+            }
+
+            filteredSchedule.forEach(evt => {
+                let sMin = timeToMinutes(evt.start);
+                let eMin = timeToMinutes(evt.end);
+                if (eMin <= sMin) eMin += 1440;
+                blocks.push({ ...evt, startMin: sMin, endMin: eMin });
+            });
+
+            blocks.sort((a, b) => a.startMin - b.startMin);
+
+            let timelineItems = [];
+            let lastEnd = 0;
+
+            blocks.forEach((b) => {
+                if (b.startMin > lastEnd) {
+                    const diff = b.startMin - lastEnd;
+                    const h = Math.floor(diff / 60);
+                    const m = diff % 60;
+                    let freeText = '';
+                    if (h > 0 && m > 0) freeText = `${h} godz. ${m} min wolnego`;
+                    else if (h > 0) freeText = `${h} godz. wolnego`;
+                    else freeText = `${m} min wolnego`;
+                    timelineItems.push({
+                        isFree: true,
+                        start: minutesToTime(lastEnd),
+                        end: minutesToTime(b.startMin),
+                        durationText: freeText,
+                        durationMin: diff
+                    });
+                }
+                timelineItems.push(b);
+                lastEnd = Math.max(lastEnd, b.endMin);
+            });
+
+            if (lastEnd < 1440 && blocks.length > 0) {
+                const diff = 1440 - lastEnd;
+                const h = Math.floor(diff / 60);
+                const m = diff % 60;
+                let freeText = m > 0 ? `${h} godz. ${m} min` : `${h} godz.`;
+                timelineItems.push({
+                    isFree: true,
+                    start: minutesToTime(lastEnd),
+                    end: '24:00',
+                    durationText: `${freeText} wolnego`,
+                    durationMin: diff
+                });
+            }
+
+            return `
+                <div class="fade-in-up space-y-4">
+                    <div class="glass-card p-3 rounded-2xl flex items-center justify-between border border-cyan-500/30">
+                        <div class="flex items-center gap-2">
+                            <button onclick="setViewDate('${getYesterdayStr()}')" class="px-2.5 py-1 bg-slate-900 border border-slate-700 rounded-lg text-xs font-semibold text-slate-300 ${viewDateStr === getYesterdayStr() ? 'border-cyan-400 text-cyan-400' : ''}">Wczoraj</button>
+                            <button onclick="setViewDate('${getTodayStr()}')" class="px-2.5 py-1 bg-slate-900 border border-slate-700 rounded-lg text-xs font-semibold text-slate-300 ${viewDateStr === getTodayStr() ? 'border-cyan-400 text-cyan-400' : ''}">Dzisiaj</button>
+                        </div>
+                        <button onclick="openModal('calendar-modal')" class="px-3 py-1 bg-emerald-500/20 text-emerald-300 font-bold text-xs rounded-xl border border-emerald-500/40 flex items-center gap-1.5">
+                            <i class="ph-bold ph-calendar"></i> Kalendarz
+                        </button>
+                    </div>
+
+                    ${sleepData ? `
+                        <div class="glass p-3 rounded-xl border border-indigo-500/30 flex items-center justify-between text-xs">
+                            <div class="flex items-center gap-2">
+                                <i class="ph-fill ph-moon-stars text-indigo-400 text-lg"></i>
+                                <div>
+                                    <span class="font-bold text-slate-200">Sen:</span>
+                                    <span class="text-indigo-300 ml-1">Pobudka ${sleepData.wakeTime} | Spać o ${sleepData.bedTime}</span>
+                                </div>
+                            </div>
+                            <span class="font-extrabold text-indigo-400 bg-indigo-500/10 px-2 py-0.5 rounded border border-indigo-500/20">${sleepData.hours}h</span>
+                        </div>
+                    ` : `
+                        <div onclick="switchTab('sleep')" class="glass p-3 rounded-xl border border-slate-800 flex items-center justify-between text-xs cursor-pointer hover:border-indigo-500/40">
+                            <span class="text-slate-400 flex items-center gap-1.5">
+                                <i class="ph-bold ph-moon text-indigo-400"></i> Kliknij aby zapisać godziny snu...
+                            </span>
+                            <span class="text-indigo-400 font-bold text-[10px] uppercase">Ustaw &rarr;</span>
+                        </div>
+                    `}
+
+                    <div class="space-y-2 pt-1">
+                        ${timelineItems.length === 0 ? `
+                            <div class="text-center py-12 text-slate-500 glass-card rounded-2xl">
+                                <i class="ph-bold ph-calendar-plus text-4xl mb-2 text-cyan-400/60 block"></i>
+                                Brak zaplanowanych bloków na ten dzień.<br>Kliknij ikonę zegara, aby dodać powtarzalne bloki czasowe.
+                            </div>
+                        ` : timelineItems.map(item => {
+                            if (item.isFree) {
+                                return `
+                                    <div class="flex items-center gap-3 py-1.5 px-3 rounded-xl border border-dashed border-slate-800/80 bg-slate-950/30 text-slate-500">
+                                        <div class="w-12 text-[10px] font-mono font-bold text-slate-600">${item.start}</div>
+                                        <div class="flex-1 flex items-center gap-2 text-xs">
+                                            <i class="ph-bold ph-coffee text-slate-600"></i>
+                                            <span>${item.durationText}</span>
+                                        </div>
+                                    </div>
+                                `;
+                            }
+
+                            if (item.isSleep) {
+                                return `
+                                    <div class="flex items-stretch gap-3 p-3 rounded-2xl bg-indigo-950/30 border border-indigo-500/30 shadow-sm">
+                                        <div class="w-12 flex flex-col justify-between text-center font-mono font-extrabold text-xs text-indigo-400 py-0.5 border-r border-indigo-500/20 pr-2">
+                                            <span>${item.start}</span>
+                                            <span class="text-[9px] text-slate-500 font-normal">${item.end}</span>
+                                        </div>
+                                        <div class="flex-1">
+                                            <div class="flex items-center justify-between">
+                                                <h4 class="font-bold text-slate-100 text-sm flex items-center gap-1.5">
+                                                    <i class="ph-fill ph-moon-stars text-indigo-400"></i> ${item.title}
+                                                </h4>
+                                                <span class="text-[9px] bg-indigo-500/20 text-indigo-300 border border-indigo-500/30 px-2 py-0.5 rounded-full font-bold">SEN</span>
+                                            </div>
+                                            <p class="text-[10px] text-indigo-300/70 mt-1">Zarejestrowane w zakładce Sen</p>
+                                        </div>
+                                    </div>
+                                `;
+                            }
+
+                            const linkedHabit = item.habitId ? state.habits.find(h => h.id === item.habitId) : null;
+                            const isDone = linkedHabit ? isHabitDone(linkedHabit, viewDateStr) : false;
+
+                            return `
+                                <div class="flex items-stretch gap-3 p-3 rounded-2xl glass-card border ${isDone ? 'border-emerald-500/40 bg-emerald-950/20' : 'border-slate-800'} transition-all">
+                                    <div class="w-12 flex flex-col justify-between text-center font-mono font-extrabold text-xs text-slate-300 py-0.5 border-r border-slate-800 pr-2">
+                                        <span>${item.start}</span>
+                                        <span class="text-[9px] text-slate-500 font-normal">${item.end}</span>
+                                    </div>
+                                    <div class="flex-1 flex flex-col justify-between">
+                                        <div class="flex items-start justify-between">
+                                            <div>
+                                                <h4 class="font-bold text-slate-100 text-sm ${isDone ? 'line-through text-slate-400' : ''}">${item.title}</h4>
+                                                ${item.days && item.days.length > 0 ? `
+                                                    <span class="text-[9px] text-cyan-400 font-semibold uppercase tracking-wider">Cykl tygodniowy</span>
+                                                ` : ''}
+                                            </div>
+                                            <button onclick="deleteScheduleItem('${item.id}')" class="text-slate-600 hover:text-red-400 p-0.5">
+                                                <i class="ph-bold ph-trash text-base"></i>
+                                            </button>
+                                        </div>
+
+                                        ${linkedHabit ? `
+                                            <div class="mt-2 flex items-center justify-between pt-2 border-t border-slate-800/80">
+                                                <span class="text-[10px] text-slate-400 flex items-center gap-1">
+                                                    <i class="ph-bold ph-link text-emerald-400"></i> Nawyk: <b>${linkedHabit.title}</b>
+                                                </span>
+                                                <button onclick="toggleHabit('${linkedHabit.id}', '${viewDateStr}')" class="check-bounce px-2.5 py-1 rounded-lg text-[10px] font-bold border ${isDone ? 'bg-emerald-500 border-emerald-400 text-slate-950 shadow-neon' : 'bg-slate-900 border-slate-700 text-slate-300'}">
+                                                    ${isDone ? '✓ Wykonane' : 'Odznacz'}
+                                                </button>
+                                            </div>
+                                        ` : ''}
+                                    </div>
+                                </div>
+                            `;
+                        }).join('')}
+                    </div>
+                </div>
+            `;
+        }
+
+        function renderHabitsView() {
+            const filteredHabits = state.habits.filter(h => h.freq === state.habitFilter);
+            const doneCount = filteredHabits.filter(h => isHabitDone(h, viewDateStr)).length;
+            const totalCount = filteredHabits.length;
+            const percentage = totalCount > 0 ? Math.round((doneCount / totalCount) * 100) : 0;
+            const statusStyle = getStatusColorClasses(percentage);
+
+            return `
+                <div class="fade-in-up space-y-4">
+                    <div class="flex items-center justify-between glass p-2 rounded-xl">
+                        <div class="flex gap-2">
+                            <button onclick="setViewDate('${getYesterdayStr()}')" class="px-3 py-1 rounded-lg text-xs font-bold ${viewDateStr === getYesterdayStr() ? 'bg-emerald-500 text-slate-950 shadow-neon' : 'bg-slate-900 text-slate-400 border border-slate-800'}">Edytuj Wczoraj</button>
+                            <button onclick="setViewDate('${getTodayStr()}')" class="px-3 py-1 rounded-lg text-xs font-bold ${viewDateStr === getTodayStr() ? 'bg-emerald-500 text-slate-950 shadow-neon' : 'bg-slate-900 text-slate-400 border border-slate-800'}">Dzisiaj</button>
+                        </div>
+                        <span class="text-xs text-slate-400 font-mono font-semibold">${viewDateStr}</span>
+                    </div>
+
+                    <div class="glass-card p-4 rounded-2xl relative overflow-hidden border ${statusStyle.bg}">
+                        <div class="flex items-center justify-between mb-2">
+                            <div>
+                                <span class="text-xs uppercase font-extrabold tracking-wider opacity-80">Wykonanie (${state.habitFilter})</span>
+                                <h2 class="text-2xl font-black text-slate-100 mt-0.5">${percentage}%</h2>
+                            </div>
+                            <div class="w-12 h-12 rounded-full border-4 ${statusStyle.badgeBg} flex items-center justify-center font-bold text-xs shadow-md">
+                                ${doneCount}/${totalCount}
+                            </div>
+                        </div>
+                        <div class="w-full bg-slate-900/90 rounded-full h-2.5 overflow-hidden border border-slate-800">
+                            <div class="bg-gradient-to-r ${statusStyle.bar} h-full rounded-full transition-all duration-500" style="width: ${percentage}%"></div>
+                        </div>
+                    </div>
+
+                    <div class="flex bg-slate-900/80 p-1 rounded-xl border border-slate-800 text-xs font-semibold">
+                        <button onclick="setHabitFilter('daily')" class="flex-1 py-1.5 rounded-lg transition-all ${state.habitFilter === 'daily' ? 'bg-emerald-500 text-slate-950 shadow' : 'text-slate-400'}">Dzienne</button>
+                        <button onclick="setHabitFilter('weekly')" class="flex-1 py-1.5 rounded-lg transition-all ${state.habitFilter === 'weekly' ? 'bg-emerald-500 text-slate-950 shadow' : 'text-slate-400'}">Tygod.</button>
+                        <button onclick="setHabitFilter('monthly')" class="flex-1 py-1.5 rounded-lg transition-all ${state.habitFilter === 'monthly' ? 'bg-emerald-500 text-slate-950 shadow' : 'text-slate-400'}">Mies.</button>
+                        <button onclick="setHabitFilter('yearly')" class="flex-1 py-1.5 rounded-lg transition-all ${state.habitFilter === 'yearly' ? 'bg-emerald-500 text-slate-950 shadow' : 'text-slate-400'}">Roczne</button>
+                    </div>
+
+                    <div class="space-y-2.5">
+                        ${filteredHabits.length === 0 ? `
+                            <div class="text-center py-8 text-slate-500">
+                                <i class="ph-bold ph-notebook text-3xl mb-1 block"></i>
+                                Brak nawyków w tej sekcji. Kliknij <b>+</b> aby dodać nowy nawyk.
+                            </div>
+                        ` : filteredHabits.map(habit => {
+                            const isDone = isHabitDone(habit, viewDateStr);
+                            const streak = calculateStreak(habit);
+                            const unit = STREAK_UNITS[habit.freq] || 'dni z rzędu';
+                            return `
+                                <div class="glass-card p-3.5 rounded-2xl flex items-center justify-between transition-all ${isDone ? 'border-emerald-500/40 bg-emerald-950/20' : ''}">
+                                    <div class="flex items-center gap-3">
+                                        <button onclick="toggleHabit('${habit.id}', '${viewDateStr}')" class="check-bounce w-7 h-7 rounded-xl flex items-center justify-center border ${isDone ? 'bg-emerald-500 border-emerald-400 text-slate-950 shadow-neon' : 'border-slate-700 bg-slate-900 text-transparent'} transition-all">
+                                            <i class="ph-bold ph-check text-base"></i>
+                                        </button>
+                                        <div>
+                                            <h4 class="font-bold text-slate-100 text-sm ${isDone ? 'line-through text-slate-400' : ''}">${habit.title}</h4>
+                                            <div class="flex items-center gap-2 mt-0.5">
+                                                ${streak > 0 ? `
+                                                    <span class="text-[10px] text-amber-400 font-bold flex items-center gap-0.5">
+                                                        <i class="ph-fill ph-fire"></i> ${streak} ${unit}
+                                                    </span>
+                                                ` : `
+                                                    <span class="text-[10px] text-slate-500">brak passy</span>
+                                                `}
+                                            </div>
+                                        </div>
+                                    </div>
+                                    <button onclick="deleteHabit('${habit.id}')" class="text-slate-600 hover:text-red-400 p-1">
+                                        <i class="ph-bold ph-trash text-lg"></i>
+                                    </button>
+                                </div>
+                            `;
+                        }).join('')}
+                    </div>
+                </div>
+            `;
+        }
+
+        function renderGoalsView() {
+            return `
+                <div class="fade-in-up space-y-4">
+                    <div class="flex justify-between items-center mb-1">
+                        <h2 class="text-lg font-bold text-slate-100 flex items-center gap-2">
+                            <i class="ph-bold ph-target text-emerald-400"></i> Cele z Podgrupami
+                        </h2>
+                    </div>
+
+                    <div class="space-y-3">
+                        ${state.goals.length === 0 ? `
+                            <div class="text-center py-8 text-slate-500">
+                                Brak aktywnych celów. Kliknij <b>+</b> i wybierz "Cel złożony".
+                            </div>
+                        ` : state.goals.map(goal => {
+                            const totalSubs = goal.subgoals ? goal.subgoals.length : 0;
+                            const completedSubs = goal.subgoals ? goal.subgoals.filter(s => s.completed).length : 0;
+                            const goalPct = totalSubs > 0 ? Math.round((completedSubs / totalSubs) * 100) : 100;
+                            const isFullyDone = totalSubs === 0 || completedSubs === totalSubs;
+
+                            return `
+                                <div class="glass-card p-4 rounded-2xl border border-slate-800 space-y-3">
+                                    <div class="flex items-start justify-between">
+                                        <div>
+                                            <h3 class="font-bold text-slate-100 text-base">${goal.title}</h3>
+                                            <p class="text-[11px] text-slate-400 mt-0.5">
+                                                ${totalSubs > 0 ? `Postęp: ${completedSubs}/${totalSubs} mini-celów (${goalPct}%)` : 'Brak mini-celi — gotowe do ukończenia'}
+                                            </p>
+                                        </div>
+                                        <button onclick="deleteGoal('${goal.id}')" class="text-slate-600 hover:text-red-400">
+                                            <i class="ph-bold ph-trash text-base"></i>
+                                        </button>
+                                    </div>
+
+                                    ${totalSubs > 0 ? `
+                                        <div class="w-full bg-slate-900 rounded-full h-1.5 overflow-hidden border border-slate-800">
+                                            <div class="bg-emerald-400 h-full rounded-full transition-all" style="width: ${goalPct}%"></div>
+                                        </div>
+                                        <div class="space-y-1.5 pt-1">
+                                            ${goal.subgoals.map(sub => `
+                                                <div onclick="toggleSubgoal('${goal.id}', '${sub.id}')" class="check-bounce flex items-center gap-2.5 p-2 rounded-xl bg-slate-900/50 border border-slate-800/60 cursor-pointer active:bg-slate-800/80">
+                                                    <div class="w-4 h-4 rounded border flex items-center justify-center ${sub.completed ? 'bg-emerald-500 border-emerald-400 text-slate-950' : 'border-slate-600'} text-[10px]">
+                                                        ${sub.completed ? '<i class="ph-bold ph-check"></i>' : ''}
+                                                    </div>
+                                                    <span class="text-xs ${sub.completed ? 'line-through text-slate-500' : 'text-slate-200'}">${sub.title}</span>
+                                                </div>
+                                            `).join('')}
+                                        </div>
+                                    ` : ''}
+
+                                    ${isFullyDone ? `
+                                        <button onclick="completeGoal('${goal.id}')" class="w-full py-2 bg-emerald-500/20 border border-emerald-500/50 text-emerald-400 font-bold text-xs rounded-xl shadow-neon transition-all mt-2 flex items-center justify-center gap-1.5">
+                                            <i class="ph-bold ph-trophy"></i> Oznacz Cel Jako Ukończony!
+                                        </button>
+                                    ` : ''}
+                                </div>
+                            `;
+                        }).join('')}
+                    </div>
+
+                    ${state.history.length > 0 ? `
+                        <div class="pt-4 space-y-2">
+                            <h3 class="text-xs uppercase font-extrabold text-slate-400 tracking-wider">Historia Ukończonych Celów</h3>
+                            <div class="space-y-2">
+                                ${state.history.map(item => `
+                                    <div class="glass p-3 rounded-xl border border-emerald-500/30 flex items-center justify-between">
+                                        <div>
+                                            <h4 class="font-bold text-slate-200 text-xs flex items-center gap-1">
+                                                <i class="ph-fill ph-check-circle text-emerald-400"></i> ${item.title}
+                                            </h4>
+                                            <p class="text-[10px] text-slate-400 mt-0.5">
+                                                Ukończono: ${item.completedAt}
+                                                ${item.subgoals && item.subgoals.length ? `· ${item.subgoals.length} mini-celi` : ''}
+                                            </p>
+                                        </div>
+                                        <button onclick="restoreGoal('${item.id}')" class="text-[10px] text-cyan-400 hover:underline">
+                                            Przywróć
+                                        </button>
+                                    </div>
+                                `).join('')}
+                            </div>
+                        </div>
+                    ` : ''}
+                </div>
+            `;
+        }
+
+        function renderSleepView() {
+            const sleepData = state.sleepLogs[viewDateStr] || { hours: 8.0, bedTime: '23:00', wakeTime: '07:00' };
+            return `
+                <div class="fade-in-up space-y-4">
+                    <div class="flex items-center justify-between glass p-2 rounded-xl">
+                        <div class="flex gap-2">
+                            <button onclick="setViewDate('${getYesterdayStr()}')" class="px-3 py-1 rounded-lg text-xs font-bold ${viewDateStr === getYesterdayStr() ? 'bg-indigo-600 text-white shadow-md' : 'bg-slate-900 text-slate-400 border border-slate-800'}">Edytuj Wczoraj</button>
+                            <button onclick="setViewDate('${getTodayStr()}')" class="px-3 py-1 rounded-lg text-xs font-bold ${viewDateStr === getTodayStr() ? 'bg-indigo-600 text-white shadow-md' : 'bg-slate-900 text-slate-400 border border-slate-800'}">Dzisiaj</button>
+                        </div>
+                        <span class="text-xs text-indigo-300 font-mono font-bold">${viewDateStr}</span>
+                    </div>
+
+                    <div class="glass-card p-4 rounded-2xl border border-indigo-500/30 space-y-4">
+                        <div class="flex items-center justify-between">
+                            <div class="flex items-center gap-2">
+                                <i class="ph-fill ph-moon-stars text-2xl text-indigo-400"></i>
+                                <div>
+                                    <h3 class="font-bold text-slate-100 text-sm">Monitor Snu</h3>
+                                    <p class="text-[11px] text-slate-400">Rejestracja sypialniana</p>
+                                </div>
+                            </div>
+                        </div>
+
+                        <div class="bg-slate-900/90 p-3.5 rounded-xl border border-slate-800 space-y-3">
+                            <div class="grid grid-cols-2 gap-2 text-xs">
+                                <div>
+                                    <label class="block text-slate-400 text-[10px] mb-1">Pobudka (rano)</label>
+                                    <input type="time" id="sleep-wake" value="${sleepData.wakeTime || '07:00'}" oninput="recalcSleepHours()" class="w-full bg-slate-950 border border-slate-700 rounded-lg text-center font-bold text-indigo-300 py-1.5">
+                                </div>
+                                <div>
+                                    <label class="block text-slate-400 text-[10px] mb-1">Pójście spać (wieczór)</label>
+                                    <input type="time" id="sleep-bed" value="${sleepData.bedTime || '23:00'}" oninput="recalcSleepHours()" class="w-full bg-slate-950 border border-slate-700 rounded-lg text-center font-bold text-indigo-300 py-1.5">
+                                </div>
+                            </div>
+                            <p class="text-[10px] text-slate-500">Jeśli śpisz po północy (np. 02:00–10:00), wpisz godziny w tej samej dobie — aplikacja to rozpozna.</p>
+                            
+                            <div class="flex items-center justify-between pt-2 border-t border-slate-800">
+                                <div class="flex items-center gap-1.5">
+                                    <span class="text-xs text-slate-300 font-medium">Liczba godz.:</span>
+                                    <input type="number" step="0.5" min="0" max="24" id="sleep-hours" value="${sleepData.hours}" class="w-14 bg-slate-950 border border-slate-700 rounded-lg text-center font-bold text-indigo-300 py-1 text-xs">
+                                </div>
+                                <button onclick="logSleep(document.getElementById('sleep-hours').value, document.getElementById('sleep-bed').value, document.getElementById('sleep-wake').value, '${viewDateStr}')" class="px-4 py-2 bg-indigo-600 hover:bg-indigo-500 text-white font-bold rounded-xl text-xs transition-all shadow-md">
+                                    Zapisz Sen
+                                </button>
+                            </div>
+                        </div>
+
+                        <div class="pt-2">
+                            <h4 class="text-xs font-semibold text-slate-400 mb-2">7 dni do ${viewDateStr} (godziny)</h4>
+                            <div class="w-full h-40 relative bg-slate-950/60 rounded-xl p-2 border border-slate-800">
+                                <canvas id="sleepCanvas" class="w-full h-full"></canvas>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            `;
+        }
+
+        function renderSleepChart() {
+            const canvas = document.getElementById('sleepCanvas');
+            if (!canvas) return;
+            const ctx = canvas.getContext('2d');
+
+            canvas.width = canvas.offsetWidth * 2;
+            canvas.height = canvas.offsetHeight * 2;
+            ctx.scale(2, 2);
+
+            const width = canvas.offsetWidth;
+            const height = canvas.offsetHeight;
+
+            // kotwicz wykres w viewDateStr
+            const baseDate = new Date(viewDateStr + 'T00:00:00');
+            const days = [];
+            for (let i = 6; i >= 0; i--) {
+                const d = new Date(baseDate);
+                d.setDate(d.getDate() - i);
+                days.push(formatDate(d));
+            }
+
+            const values = days.map(d => (state.sleepLogs[d] ? state.sleepLogs[d].hours : 0));
+
+            ctx.clearRect(0, 0, width, height);
+
+            ctx.strokeStyle = '#1e293b';
+            ctx.lineWidth = 1;
+            for (let y = 15; y < height - 15; y += 25) {
+                ctx.beginPath();
+                ctx.moveTo(0, y);
+                ctx.lineTo(width, y);
+                ctx.stroke();
+            }
+
+            const maxVal = 12;
+            const stepX = (width - 24) / (days.length - 1 || 1);
+            const startX = 12;
+
+            ctx.beginPath();
+            ctx.strokeStyle = '#6366f1';
+            ctx.lineWidth = 3;
+            values.forEach((val, i) => {
+                const x = startX + i * stepX;
+                const y = (height - 25) - (val / maxVal) * (height - 40);
+                if (i === 0) ctx.moveTo(x, y);
+                else ctx.lineTo(x, y);
+            });
+            ctx.stroke();
+
+            values.forEach((val, i) => {
+                const x = startX + i * stepX;
+                const y = (height - 25) - (val / maxVal) * (height - 40);
+                ctx.fillStyle = val > 0 ? '#818cf8' : '#334155';
+                ctx.beginPath();
+                ctx.arc(x, y, 4, 0, Math.PI * 2);
+                ctx.fill();
+
+                if (val > 0) {
+                    ctx.fillStyle = '#cbd5e1';
+                    ctx.font = 'bold 9px sans-serif';
+                    ctx.textAlign = 'center';
+                    ctx.fillText(`${val}h`, x, y - 8);
+                }
+
+                const dayLabel = days[i].substring(8, 10);
+                ctx.fillStyle = '#64748b';
+                ctx.font = '9px sans-serif';
+                ctx.textAlign = 'center';
+                ctx.fillText(dayLabel, x, height - 4);
+            });
+        }
+
+        function renderStatsView() {
+            const dailyHabits = state.habits.filter(h => h.freq === 'daily');
+            const todayKey = getTodayStr();
+            const todayLogs = state.logs[todayKey] || [];
+            const doneDailyToday = dailyHabits.filter(h => todayLogs.includes(h.id)).length;
+            const dailyPct = dailyHabits.length > 0 ? Math.round((doneDailyToday / dailyHabits.length) * 100) : 0;
+            const statusStyle = getStatusColorClasses(dailyPct);
+
+            const now = new Date();
+            const year = now.getFullYear();
+            const month = now.getMonth();
+            const daysInMonth = new Date(year, month + 1, 0).getDate();
+
+            let heatmapHTML = '';
+            for (let day = 1; day <= daysInMonth; day++) {
+                const dayStr = `${year}-${String(month + 1).padStart(2, '0')}-${String(day).padStart(2, '0')}`;
+                const dayLogs = state.logs[dayStr] || [];
+                const doneDaily = dailyHabits.filter(h => dayLogs.includes(h.id)).length;
+                const pct = dailyHabits.length > 0 ? Math.round((doneDaily / dailyHabits.length) * 100) : 0;
+                const dayStatusStyle = getStatusColorClasses(pct);
+                const isToday = dayStr === getTodayStr();
+                heatmapHTML += `
+                    <div onclick="setViewDate('${dayStr}'); switchTab('planner');" class="aspect-square rounded-md border ${dayStatusStyle.tileBg} ${isToday ? 'ring-2 ring-cyan-400 ring-offset-1 ring-offset-slate-950' : ''} flex items-center justify-center text-[9px] font-bold cursor-pointer hover:scale-105 transition-transform" title="${dayStr}: ${pct}%">
+                        ${day}
+                    </div>
+                `;
+            }
+
+            return `
+                <div class="fade-in-up space-y-4">
+                    <div class="glass-card p-4 rounded-2xl flex items-center justify-between border ${statusStyle.bg}">
+                        <div>
+                            <span class="text-xs opacity-80">Dzisiejszy wynik (nawyki dzienne)</span>
+                            <h3 class="text-xl font-black ${statusStyle.text}">${dailyPct}% odznaczonych</h3>
+                        </div>
+                        <div class="w-10 h-10 rounded-xl ${statusStyle.badgeBg} flex items-center justify-center text-xl font-bold">⚡</div>
+                    </div>
+
+                    <div class="glass-card p-4 rounded-2xl border border-slate-800 space-y-3">
+                        <div class="flex justify-between items-center">
+                            <h3 class="font-bold text-slate-100 text-sm flex items-center gap-1.5">
+                                <i class="ph-bold ph-calendar text-emerald-400"></i> Aktywność w miesiącu
+                            </h3>
+                        </div>
+                        <div class="grid grid-cols-7 gap-1.5 pt-1">
+                            ${heatmapHTML}
+                        </div>
+                        <div class="flex items-center justify-end gap-2 pt-2 text-[10px] text-slate-400">
+                            <span class="flex items-center gap-1"><span class="w-2.5 h-2.5 rounded bg-red-950 border border-red-800"></span> &lt;50%</span>
+                            <span class="flex items-center gap-1"><span class="w-2.5 h-2.5 rounded bg-amber-700 border border-amber-500"></span> 50-79%</span>
+                            <span class="flex items-center gap-1"><span class="w-2.5 h-2.5 rounded bg-emerald-400 border border-emerald-300"></span> 80-100%</span>
+                        </div>
+                    </div>
+
+                    <div class="grid grid-cols-2 gap-3">
+                        <div class="glass-card p-3.5 rounded-2xl border border-slate-800">
+                            <span class="text-[11px] text-slate-400 font-medium">Liczba Nawyków</span>
+                            <h4 class="text-lg font-extrabold text-slate-100 mt-1">${state.habits.length}</h4>
+                        </div>
+                        <div class="glass-card p-3.5 rounded-2xl border border-slate-800">
+                            <span class="text-[11px] text-slate-400 font-medium">Ukończone Cele</span>
+                            <h4 class="text-lg font-extrabold text-slate-100 mt-1">${state.history.length}</h4>
+                        </div>
+                    </div>
+                </div>
+            `;
+        }
+
+        // ---------- CALENDAR ----------
+        function renderCalendar() {
+            const container = document.getElementById('calendar-view-container');
+            if (!container) return;
+
+            const year = currentCalendarDate.getFullYear();
+            const month = currentCalendarDate.getMonth();
+            const monthNames = ["Styczeń", "Luty", "Marzec", "Kwiecień", "Maj", "Czerwiec", "Lipiec", "Sierpień", "Wrzesień", "Październik", "Listopad", "Grudzień"];
+
+            const firstDay = new Date(year, month, 1).getDay();
+            const offset = (firstDay + 6) % 7;
+            const daysInMonth = new Date(year, month + 1, 0).getDate();
+
+            let daysHTML = '';
+            for (let i = 0; i < offset; i++) daysHTML += `<div class="aspect-square"></div>`;
+
+            for (let day = 1; day <= daysInMonth; day++) {
+                const dayStr = `${year}-${String(month + 1).padStart(2, '0')}-${String(day).padStart(2, '0')}`;
+                const dObj = new Date(year, month, day);
+                const dayOfWeek = dObj.getDay();
+
+                const hasSchedule = state.schedule.some(s => {
+                    if (s.specificDate) return s.specificDate === dayStr;
+                    if (s.days && s.days.length > 0) return s.days.includes(dayOfWeek);
+                    return false;
+                });
+
+                const isSelected = viewDateStr === dayStr;
+                const isToday = dayStr === getTodayStr();
+
+                daysHTML += `
+                    <button onclick="setViewDate('${dayStr}');" class="aspect-square rounded-xl border ${isSelected ? 'border-emerald-400 bg-emerald-500/20 font-bold text-emerald-300 shadow-neon' : 'border-slate-800 bg-slate-900/60 text-slate-200'} ${isToday && !isSelected ? 'ring-1 ring-cyan-400/60' : ''} flex flex-col items-center justify-center relative hover:border-emerald-500/50">
+                        <span class="text-xs">${day}</span>
+                        ${hasSchedule ? `<span class="w-1.5 h-1.5 rounded-full bg-emerald-400 shadow-neon absolute bottom-1"></span>` : ''}
+                    </button>
+                `;
+            }
+
+            container.innerHTML = `
+                <div class="flex items-center justify-between pb-2">
+                    <button onclick="changeCalendarMonth(-1)" class="p-1 rounded-lg bg-slate-900 border border-slate-800 text-slate-300"><i class="ph-bold ph-caret-left"></i></button>
+                    <span class="font-bold text-slate-100 text-sm">${monthNames[month]} ${year}</span>
+                    <button onclick="changeCalendarMonth(1)" class="p-1 rounded-lg bg-slate-900 border border-slate-800 text-slate-300"><i class="ph-bold ph-caret-right"></i></button>
+                </div>
+                <div class="grid grid-cols-7 gap-1 text-center font-bold text-[10px] text-slate-400 pb-1">
+                    <div>Pn</div><div>Wt</div><div>Śr</div><div>Cz</div><div>Pt</div><div>Sob</div><div>Nd</div>
+                </div>
+                <div class="grid grid-cols-7 gap-1">
+                    ${daysHTML}
+                </div>
+            `;
+        }
+
+        function changeCalendarMonth(delta) {
+            currentCalendarDate.setMonth(currentCalendarDate.getMonth() + delta);
+            renderCalendar();
+        }
+
+        // ---------- MODALS ----------
+        function openModal(id) {
+            document.getElementById(id).classList.remove('hidden');
+            document.getElementById(id).classList.add('flex');
+            if (id === 'calendar-modal') {
+                // zsynchronizuj z aktualnie przeglądaną datą
+                currentCalendarDate = new Date(viewDateStr + 'T00:00:00');
+                renderCalendar();
+            }
+        }
+
+        function resetHabitForm() {
+            document.getElementById('add-item-form').reset();
+            const container = document.getElementById('subgoals-inputs');
+            if (container) {
+                container.innerHTML = `<input type="text" placeholder="Mini-cel 1" class="subgoal-input w-full bg-slate-900/90 border border-slate-800 rounded-lg px-3 py-1.5 text-xs text-slate-200">`;
+            }
+            setFormType('habit');
+            const title = document.getElementById('input-title');
+            title.classList.remove('border-red-500');
+        }
+
+        function resetScheduleForm() {
+            document.getElementById('add-schedule-form').reset();
+            selectedDaysForSchedule = [];
+            document.querySelectorAll('.day-btn').forEach(b => {
+                b.className = "day-btn py-1.5 rounded-lg border border-slate-800 bg-slate-900 text-slate-400 text-xs font-bold";
+            });
+            const title = document.getElementById('sched-title');
+            title.classList.remove('border-red-500');
+        }
+
+        function closeModal(id) {
+            document.getElementById(id).classList.add('hidden');
+            document.getElementById(id).classList.remove('flex');
+            if (id === 'add-habit-modal') resetHabitForm();
+            if (id === 'add-schedule-modal') resetScheduleForm();
+        }
+
+        function toggleDaySelection(btn) {
+            const day = parseInt(btn.getAttribute('data-day'));
+            if (selectedDaysForSchedule.includes(day)) {
+                selectedDaysForSchedule = selectedDaysForSchedule.filter(d => d !== day);
+                btn.className = "day-btn py-1.5 rounded-lg border border-slate-800 bg-slate-900 text-slate-400 text-xs font-bold";
+            } else {
+                selectedDaysForSchedule.push(day);
+                btn.className = "day-btn py-1.5 rounded-lg border border-cyan-500 bg-cyan-500/20 text-cyan-300 text-xs font-bold shadow-sm";
+            }
+        }
+
+        function setFormType(type) {
+            currentFormType = type;
+            const habitBtn = document.getElementById('type-btn-habit');
+            const goalBtn = document.getElementById('type-btn-goal');
+            const freqGroup = document.getElementById('habit-frequency-group');
+            const subGroup = document.getElementById('goal-subitems-group');
+            if (type === 'habit') {
+                habitBtn.className = "py-2 px-3 rounded-xl border border-emerald-500/40 bg-emerald-500/10 text-emerald-400 font-semibold text-xs text-center";
+                goalBtn.className = "py-2 px-3 rounded-xl border border-slate-800 bg-slate-900/60 text-slate-400 font-semibold text-xs text-center";
+                freqGroup.classList.remove('hidden');
+                subGroup.classList.add('hidden');
+            } else {
+                goalBtn.className = "py-2 px-3 rounded-xl border border-emerald-500/40 bg-emerald-500/10 text-emerald-400 font-semibold text-xs text-center";
+                habitBtn.className = "py-2 px-3 rounded-xl border border-slate-800 bg-slate-900/60 text-slate-400 font-semibold text-xs text-center";
+                freqGroup.classList.add('hidden');
+                subGroup.classList.remove('hidden');
+            }
+        }
+
+        function addSubGoalInput() {
+            const container = document.getElementById('subgoals-inputs');
+            const count = container.querySelectorAll('input').length + 1;
+            const input = document.createElement('input');
+            input.type = 'text';
+            input.placeholder = `Mini-cel ${count}`;
+            input.className = 'subgoal-input w-full bg-slate-900/90 border border-slate-800 rounded-lg px-3 py-1.5 text-xs text-slate-200 mt-2';
+            container.appendChild(input);
+        }
+
+        function removeSubGoalInput() {
+            const container = document.getElementById('subgoals-inputs');
+            const inputs = container.querySelectorAll('input');
+            if (inputs.length > 1) {
+                inputs[inputs.length - 1].remove();
+            }
+        }
+
+        function handleFormSubmit(e) {
+            e.preventDefault();
+            const titleInput = document.getElementById('input-title');
+            const title = titleInput.value.trim();
+            if (!title) { flashInvalid(titleInput); return; }
+
+            if (currentFormType === 'habit') {
+                const freq = document.getElementById('input-freq').value;
+                state.habits.push({
+                    id: 'h_' + Date.now(),
+                    title,
+                    freq
+                });
+            } else {
+                const subInputs = document.querySelectorAll('.subgoal-input');
+                const subgoals = [];
+                subInputs.forEach((inp, idx) => {
+                    if (inp.value.trim()) {
+                        subgoals.push({
+                            id: 'sg_' + Date.now() + '_' + idx,
+                            title: inp.value.trim(),
+                            completed: false
+                        });
+                    }
+                });
+                state.goals.push({
+                    id: 'g_' + Date.now(),
+                    title,
+                    createdAt: viewDateStr,
+                    subgoals
+                });
+            }
+
+            saveData();
+            closeModal('add-habit-modal');
+            render();
+        }
+
+        function handleScheduleSubmit(e) {
+            e.preventDefault();
+            const titleInput = document.getElementById('sched-title');
+            const title = titleInput.value.trim();
+            const start = document.getElementById('sched-start').value;
+            const end = document.getElementById('sched-end').value;
+            const habitId = document.getElementById('sched-habit-link').value;
+
+            if (!title) { flashInvalid(titleInput); return; }
+            if (!start || !end) return;
+            if (start === end) {
+                flashInvalid(document.getElementById('sched-end'));
+                return;
+            }
+
+            const newItem = {
+                id: 'sched_' + Date.now(),
+                title,
+                start,
+                end,
+                habitId: habitId || null,
+                days: [...selectedDaysForSchedule],
+                specificDate: selectedDaysForSchedule.length === 0 ? viewDateStr : null
+            };
+
+            state.schedule.push(newItem);
+            saveData();
+            closeModal('add-schedule-modal');
+            render();
+        }
+    </script>
+</body>
+</html>
