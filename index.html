@@ -62,6 +62,8 @@
             -webkit-tap-highlight-color: transparent;
         }
 
+        html { -webkit-text-size-adjust: 100%; text-size-adjust: 100%; }
+
         html, body { height: 100%; }
 
         body {
@@ -120,12 +122,11 @@
         .is-hidden { display: none !important; }
 
         #app-container {
-            position: relative;
+            position: fixed;
+            inset: 0;
             z-index: 1;
             width: 100%;
             max-width: 28rem;
-            height: 100vh;
-            height: 100dvh;
             margin: 0 auto;
             display: flex;
             flex-direction: column;
@@ -140,7 +141,7 @@
         }
 
         .pt-safe { padding-top: max(0.8rem, env(safe-area-inset-top)); }
-        .pb-safe { padding-bottom: max(0.55rem, env(safe-area-inset-bottom)); }
+        .pb-safe { padding-bottom: max(0.4rem, calc(env(safe-area-inset-bottom) - 0.75rem)); }
 
         .glass {
             background: rgba(8, 13, 21, 0.82);
@@ -153,9 +154,10 @@
             flex: 1;
             overflow-y: auto;
             overflow-x: hidden;
-            padding: 1rem 1rem calc(6.8rem + env(safe-area-inset-bottom));
+            padding: 1rem 1rem 1.4rem;
             overscroll-behavior: contain;
             scrollbar-width: thin;
+            -webkit-overflow-scrolling: touch;
         }
 
         .font-display { font-family: 'Sora', 'Manrope', sans-serif; }
@@ -314,7 +316,7 @@
             border-radius: 0.78rem;
             color: #e2e8f0;
             padding: 0.68rem 0.78rem;
-            font-size: 0.8rem;
+            font-size: 1rem;
             font-weight: 600;
             transition: border-color 0.18s ease, box-shadow 0.18s ease, background 0.18s ease;
         }
@@ -723,7 +725,7 @@
             border: 0;
             background: transparent;
             color: #e2e8f0;
-            font-size: 0.72rem;
+            font-size: 1rem;
             font-weight: 600;
             outline: none;
         }
@@ -1194,6 +1196,46 @@
         }
         .week-dot.future { opacity: 0.3; }
 
+        /* ---------- Animacje ---------- */
+        .view-enter { animation: viewIn 0.34s cubic-bezier(0.16, 1, 0.3, 1) both; }
+        .view-enter > * { animation: childIn 0.4s cubic-bezier(0.16, 1, 0.3, 1) both; }
+        .view-enter > *:nth-child(1) { animation-delay: 0.02s; }
+        .view-enter > *:nth-child(2) { animation-delay: 0.05s; }
+        .view-enter > *:nth-child(3) { animation-delay: 0.08s; }
+        .view-enter > *:nth-child(4) { animation-delay: 0.11s; }
+        .view-enter > *:nth-child(5) { animation-delay: 0.14s; }
+        .view-enter > *:nth-child(6) { animation-delay: 0.17s; }
+        .view-enter > *:nth-child(7) { animation-delay: 0.2s; }
+        .view-enter > *:nth-child(n+8) { animation-delay: 0.23s; }
+        @keyframes childIn {
+            from { opacity: 0; transform: translateY(10px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+
+        .nav-btn.active .nav-icon { animation: navPop 0.34s cubic-bezier(0.2, 1.4, 0.4, 1); }
+        @keyframes navPop {
+            0% { transform: translateY(3px) scale(0.9); }
+            60% { transform: translateY(-1px) scale(1.04); }
+            100% { transform: translateY(0) scale(1); }
+        }
+
+        .check-btn.done i,
+        .mini-check.done i { animation: checkPop 0.32s cubic-bezier(0.2, 1.5, 0.4, 1); }
+        @keyframes checkPop {
+            0% { transform: scale(0.45); }
+            60% { transform: scale(1.18); }
+            100% { transform: scale(1); }
+        }
+
+        .day-ribbon-piece {
+            animation: ribbonIn 0.5s cubic-bezier(0.16, 1, 0.3, 1) both;
+            transform-origin: left center;
+        }
+        @keyframes ribbonIn {
+            from { transform: scaleX(0.04); opacity: 0.4; }
+            to { transform: scaleX(1); opacity: 1; }
+        }
+
         .text-rose { color: #fb7185; }
         .text-amber { color: #fbbf24; }
         .text-emerald { color: #34d399; }
@@ -1238,7 +1280,7 @@
 
         <main id="main-content" class="main-scroll"></main>
 
-        <nav class="fixed bottom-0 left-0 right-0 max-w-md mx-auto glass border-t border-slate-800/80 z-30 pb-safe px-1 pt-1.5" aria-label="Nawigacja główna">
+        <nav class="shrink-0 glass border-t border-slate-800/80 z-30 pb-safe px-1 pt-1.5" aria-label="Nawigacja główna">
             <div class="grid grid-cols-5 gap-0.5 items-center">
                 <button type="button" onclick="switchTab('planner')" id="nav-planner" data-tab="planner" class="nav-btn">
                     <span class="nav-icon"><i class="ph-bold ph-calendar-blank"></i></span>
@@ -4962,6 +5004,13 @@
                 try {
                     const parsed = JSON.parse(event.newValue || 'null');
                     if (parsed && typeof parsed === 'object') {
+                        const hasData = (snapshot) => Boolean(
+                            (Array.isArray(snapshot.habits) && snapshot.habits.length) ||
+                            (Array.isArray(snapshot.goals) && snapshot.goals.length) ||
+                            (Array.isArray(snapshot.schedule) && snapshot.schedule.length) ||
+                            (snapshot.sleepLogs && Object.keys(snapshot.sleepLogs).length)
+                        );
+                        if (!hasData(parsed) && hasData(state)) return;
                         const tab = state.activeTab;
                         state = Object.assign(freshState(), parsed);
                         state.activeTab = tab;
