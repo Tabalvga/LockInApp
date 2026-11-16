@@ -123,7 +123,10 @@
 
         #app-container {
             position: fixed;
-            inset: 0;
+            top: 0;
+            left: 0;
+            right: 0;
+            height: var(--app-vh, 100dvh);
             z-index: 1;
             width: 100%;
             max-width: 28rem;
@@ -148,6 +151,12 @@
             backdrop-filter: blur(18px);
             -webkit-backdrop-filter: blur(18px);
             border: 1px solid rgba(148, 163, 184, 0.1);
+        }
+
+        .bottom-nav {
+            background: linear-gradient(180deg, rgba(9, 14, 22, 0.97), rgba(5, 7, 12, 0.99));
+            backdrop-filter: blur(18px);
+            -webkit-backdrop-filter: blur(18px);
         }
 
         .main-scroll {
@@ -1280,7 +1289,7 @@
 
         <main id="main-content" class="main-scroll"></main>
 
-        <nav class="shrink-0 glass border-t border-slate-800/80 z-30 pb-safe px-1 pt-1.5" aria-label="Nawigacja główna">
+        <nav class="shrink-0 bottom-nav border-t border-slate-800/80 z-30 pb-safe px-1 pt-1.5" aria-label="Nawigacja główna">
             <div class="grid grid-cols-5 gap-0.5 items-center">
                 <button type="button" onclick="switchTab('planner')" id="nav-planner" data-tab="planner" class="nav-btn">
                     <span class="nav-icon"><i class="ph-bold ph-calendar-blank"></i></span>
@@ -4968,6 +4977,17 @@
            Start
            ========================================================= */
 
+        /* Wysokość powłoki = realny, widoczny viewport (bez paska Safari i bez klawiatury). */
+        function syncAppHeight() {
+            const active = document.activeElement;
+            if (active && ['INPUT', 'TEXTAREA', 'SELECT'].includes(active.tagName)) return;
+            const vv = window.visualViewport;
+            let height = window.innerHeight;
+            if (vv && Math.abs(vv.scale - 1) < 0.02) height = vv.height;
+            if (!height || height < 200) return;
+            document.documentElement.style.setProperty('--app-vh', `${Math.round(height)}px`);
+        }
+
         function init() {
             loadData();
             viewDateStr = getTodayStr();
@@ -4976,6 +4996,13 @@
             updateHeader();
             updateNav();
             render(false, true);
+
+            syncAppHeight();
+            window.addEventListener('resize', syncAppHeight);
+            window.addEventListener('orientationchange', syncAppHeight);
+            if (window.visualViewport) {
+                window.visualViewport.addEventListener('resize', syncAppHeight);
+            }
 
             if (loadWarning) {
                 setTimeout(() => showToast(loadWarning, { type: 'warning', duration: 7000 }), 300);
